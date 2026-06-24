@@ -138,66 +138,33 @@ WDCS_minimal_github/
 ```
 
 ---
+## Training Configuration
 
-## Installation
+The main training hyperparameters used in WDCS are summarized below.
 
-```bash
-pip install -r requirements.txt
-```
+### Training Hyperparameters
 
----
+| Module                           | Model and input                                          | Optimizer and training schedule                                                                                      | Loss / objective                   |
+| -------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Semantic-sign recognition branch | EfficientNetV2-S<br>Input size: 384 × 384                | Optimizer: AdamW<br>Learning rate: 3e-4<br>Batch size: 32<br>Epochs: 100<br>Learning-rate schedule: cosine annealing | Multi-task cross-entropy           |
+| Segmentation branch              | SegFormer-B0<br>Input size: 384 × 384                    | Optimizer: AdamW<br>Learning rate: 1e-4<br>Batch size: 32<br>Epochs: 100<br>Learning-rate schedule: cosine annealing | Dice loss + weighted cross-entropy |
+| Downstream classifier            | LightGBM<br>Input: fused structured features             | Tree-based structured classifier                                                                                     | Multiclass log-loss objective      |
+| Backbone comparison              | ResNet-50<br>ViT-Tiny<br>Swin-T<br>Input size: 384 × 384 | Optimizer: AdamW<br>Learning rate: 3e-4<br>Batch size: 32<br>Epochs: 100<br>Learning-rate schedule: cosine annealing | Multi-task cross-entropy           |
 
-## Usage
+All models were initialized with ImageNet-pretrained weights when available and trained using the same augmentation strategy, including random resized crop, random horizontal flip, mild rotation, and mild color jitter.
 
-### 1. Train semantic-sign recognition branch
+### Semantic-sign Recognition Settings
 
-```bash
-python -m wdcs.training.train_semantic --config configs/default.yaml
-```
+| Semantic sign         | Abbreviation | Number of classes | Loss weight |
+| --------------------- | -----------: | ----------------: | ----------- |
+| Acetowhite epithelium |           AE |                 3 | Weighted CE |
+| Lesion margin         |       Margin |                 3 | Weighted CE |
+| Punctation            |           PN |                 3 | Weighted CE |
+| Mosaic                |           MC |                 3 | Weighted CE |
+| Atypical vessels      |           AV |                 2 | Weighted CE |
+| Inner border sign     |          IBS |                 2 | Weighted CE |
 
-### 2. Train segmentation branch
-
-```bash
-python -m wdcs.training.train_segmentation --config configs/default.yaml
-```
-
-### 3. Extract fusion features
-
-```bash
-python -m wdcs.feature_extraction.extract_fusion_features --config configs/default.yaml
-```
-
-### 4. Train LightGBM classifier
-
-```bash
-python -m wdcs.classical_ml.train_lightgbm \
-  --config configs/default.yaml \
-  --feature_csv outputs/features/features_all.csv \
-  --feature_set fusion
-```
-
-For semantic-sign-only ablation:
-
-```bash
-python -m wdcs.classical_ml.train_lightgbm \
-  --config configs/default.yaml \
-  --feature_csv outputs/features/features_all.csv \
-  --feature_set semantic_only
-```
-
----
-
-## Outputs
-
-The simplified pipeline generates:
-
-* Trained semantic-sign recognition model checkpoints
-* Trained segmentation model checkpoints
-* Predicted semantic-sign categories
-* One-hot clinical semantic-sign representations
-* Decoder-derived lesion spatial feature vectors
-* Structured fused feature matrices
-* Trained LightGBM classifier
+In the semantic-sign recognition branch, six task-specific classification heads share the same visual backbone. The total semantic-sign loss is computed as the sum of the six weighted cross-entropy losses. Class weights are used to reduce the effect of class imbalance within each semantic-sign task.
 
 All outputs are saved under the `outputs/` directory using reproducible file names.
 
