@@ -1,0 +1,52 @@
+seed: 2026
+
+data:
+  metadata_path: data/metadata.xlsx
+  image_size: 224
+  num_workers: 4
+  train_split: train
+  val_split: val
+  test_splits: [test, external1, external2]
+
+semantic_features:
+  acetowhite_epithelium: 3
+  lesion_margin: 3
+  punctation: 2
+  mosaic: 2
+  atypical_vessels: 2
+  inner_border_sign: 2
+
+diagnosis:
+  num_classes: 4
+  label_map:
+    Normal: 0
+    LSIL: 1
+    HSIL: 2
+    Cancer: 3
+
+model:
+  semantic_backbone: tf_efficientnetv2_s.in21k_ft_in1k
+  segformer_encoder: mit_b0
+  pretrained: true
+  decoder_dim: 256
+  seg_num_classes: 2
+
+training:
+  batch_size: 32
+  epochs: 100
+  lr: 0.0003
+  weight_decay: 0.01
+  use_amp: true
+
+loss:
+  semantic_auto_class_weights: true
+  segmentation_auto_class_weights: false
+  segmentation_class_weights: [1.0, 2.0]
+
+paths:
+  output_dir: outputs
+  semantic_ckpt: outputs/checkpoints/semantic_branch_best.pth
+  segmentation_ckpt: outputs/checkpoints/segmentation_branch_best.pth
+  class_weights_json: outputs/class_weights/semantic_class_weights.json
+  features_dir: outputs/features
+  ml_dir: outputs/classical_ml
